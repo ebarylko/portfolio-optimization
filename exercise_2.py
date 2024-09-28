@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: Import any required packages here
 
 
 import utilities
-
+from dimod import ConstrainedQuadraticModel, Binaries, Binary
+import utilities
+from dwave.system.samplers import LeapHybridCQMSampler
+from operator import neg
 
 def define_variables(stockcodes):
     """Define the variables to be used for the CQM.
@@ -28,11 +30,7 @@ def define_variables(stockcodes):
             List of variables named 's_{stk}' for each stock stk in stockcodes, where stk is replaced by the stock code.
     """
 
-    # TODO: Define your list of variables and call it stocks
-    ## Hint: Remember to import the required package at the top of the file for Binary variables
-    
-
-    return stocks
+    return [Binary(f"s_{stock}") for stock in stockcodes]
 
 def define_cqm(stocks, num_stocks_to_buy, price, returns, budget):
     """Define a CQM for the exercise. 
@@ -58,34 +56,29 @@ def define_cqm(stocks, num_stocks_to_buy, price, returns, budget):
     Returns:
         cqm (ConstrainedQuadraticModel)
     """
+    def extract_stock_names(stocks):
+        def get_stock_name(stock):
+            return stock.variables[0]
 
-    # TODO: Initialize the ConstrainedQuadraticModel called cqm
-    ## Hint: Remember to import the required package at the top of the file for ConstrainedQuadraticModels
-    
+        return map(get_stock_name, stocks)
 
-    # TODO: Add a constraint to choose exactly num_stocks_to_buy stocks
-    ## Important: Use the label 'choose k stocks', this label is case sensitive
-    
+    cqm = ConstrainedQuadraticModel()
 
-    # TODO: Add an objective function maximize returns
-    ## Hint: Use the information in returns, and remember to convert to minimization
-    
+    to_buy = list(stocks)
+    cqm.add_constraint(sum(to_buy) == num_stocks_to_buy, "choose k stocks")
+    cqm.add_constraint_from_iterable(zip(extract_stock_names(to_buy), price),
+                                     "<=",
+                                     rhs=budget,
+                                     label="budget_limitation")
 
-    # TODO: Add a constraint that the cost of the purchased stocks is less than or equal to the budget
-    ## Important: Use the label 'budget_limitation', this label is case sensitive and uses an underscore
-    
+    cqm.set_objective(sum(to_buy[i] * -returns[i] for i in range(len(to_buy))))
 
     return cqm
 
 def sample_cqm(cqm):
 
-    # TODO: Define your sampler as LeapHybridCQMSampler
-    ## Hint: Remember to import the required package at the top of the file
-    
-
-    # TODO: Sample the ConstrainedQuadraticModel cqm and store the result in sampleset
-    
-
+    sampler = LeapHybridCQMSampler()
+    sampleset = sampler.sample_cqm(cqm)
     return sampleset
 
 
