@@ -12,39 +12,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: Import any required packages here
 
 
 import utilities
-
+from dimod import ConstrainedQuadraticModel, Binaries, Binary
+import utilities
+from dwave.system.samplers import LeapHybridCQMSampler
+from itertools import product
+import numpy as np
+from operator import neg
 
 def define_variables(stockcodes):
     """Define the variables to be used for the CQM.
     Args:
         stockcodes (list): List of stocks under consideration
-    
+
     Returns:
-        stocks (list): 
+        stocks (list):
             List of variables named 's_{stk}' for each stock stk in stockcodes, where stk is replaced by the stock code.
     """
 
-    # TODO: Define your list of variables and call it stocks
-    ## Hint: Remember to import the required package at the top of the file for Binary variables
-    
+    return [Binary(f"s_{stock}") for stock in stockcodes]
 
+def generate_unique_covar_matrix_entries(num_of_entries):
+    def is_part_of_lower_triangular_matrix(point):
+        return point[0] <= point[1]
+    all_points = product(range(num_of_entries), repeat=2)
+    return list(filter(is_part_of_lower_triangular_matrix, all_points))
 
-    return stocks
-
-def define_cqm(stocks, num_stocks_to_buy, price, returns, budget, variance):
-    """Define a CQM for the exercise. 
+def define_cqm(stocks, num_stocks_to_buy, price, returns, budget):
+    """Define a CQM for the exercise.
     Requirements:
-        Objectives: 
-            - Maximize returns
-            - Minimize variance
+        Objective: Maximize returns
         Constraints:
             - Choose exactly num_stocks_to_buy stocks
             - Spend at most budget on purchase
-            
+
     Args:
         stocks (list):
             List of variables named 's_{stk}' for each stock in stockcodes
@@ -57,65 +60,60 @@ def define_cqm(stocks, num_stocks_to_buy, price, returns, budget, variance):
                 where returns[i] is the average returns for stocks[i]
         budget (float):
             Budget for purchase
-        variance (2D numpy array):
-            Entry [i][j] is the variance between stocks i and j
-        
+
     Returns:
         cqm (ConstrainedQuadraticModel)
     """
+    def extract_stock_names(stocks):
+        def get_stock_name(stock):
+            return stock.variables[0]
 
-    # TODO: Initialize the ConstrainedQuadraticModel called cqm
-    ## Hint: Remember to import the required package at the top of the file for ConstrainedQuadraticModels
-    
+        return map(get_stock_name, stocks)
 
-    # TODO: Add a constraint to choose exactly num_stocks_to_buy stocks
-    ## Important: Use the label 'choose k stocks', this label is case sensitive
-        
+    cqm = ConstrainedQuadraticModel()
 
-    # TODO: Add a constraint that the cost of the purchased stocks is less than or equal to the budget
-    ## Important: Use the label 'budget_limitation', this label is case sensitive and uses an underscore
+    to_buy = list(stocks)
+    cqm.add_constraint(sum(to_buy) == num_stocks_to_buy, "choose k stocks")
+    cqm.add_constraint_from_iterable(zip(extract_stock_names(to_buy), price),
+                                     "<=",
+                                     rhs=budget,
+                                     label="budget_limitation")
 
-
-    # TODO: Add an objective function maximize returns AND minimize variance
-    ## Hint: Determine each objective separately then add them together
-    ## Hint: Variance is computed as a quadratic term: variance[i][j]*stocks[i]*stocks[j]
+    cqm.set_objective(sum(to_buy[i] * -returns[i] for i in range(len(to_buy))))
 
 
     return cqm
 
 def sample_cqm(cqm):
 
-    # TODO: Define your sampler as LeapHybridCQMSampler
-    ## Hint: Remember to import the required package at the top of the file
-    
-
-    # TODO: Sample the ConstrainedQuadraticModel cqm and store the result in sampleset
-
-
+    sampler = LeapHybridCQMSampler()
+    sampleset = sampler.sample_cqm(cqm)
     return sampleset
+
 
 if __name__ == '__main__':
 
     # 10 stocks used in this program
-    stockcodes = ["T", "SFL", "PFE", "XOM", "MO", "VZ", "IBM", "TSLA", "GILD", "GE"]
+    stockcodes=["T", "SFL", "PFE", "XOM", "MO", "VZ", "IBM", "TSLA", "GILD", "GE"]
 
+    # Compute relevant statistics like price, average returns, and covariance
     price, returns, variance = utilities.get_stock_info()
 
-    # Number of stocks to select
+    # print(2 * np.triu(variance))
     num_stocks_to_buy = 2
 
-    # Set the budget
-    budget = 40
+    # Set the budget for the purchase
+    budget = 80
 
     # Add binary variables for stocks
     stocks = define_variables(stockcodes)
 
     # Build CQM
-    cqm = define_cqm(stocks, num_stocks_to_buy, price, returns, budget, variance)
+    cqm = define_cqm(stocks, num_stocks_to_buy, price, returns, budget)
 
     # Run CQM on hybrid solver
     sampleset = sample_cqm(cqm)
-    
+
     # Process and print solution
-    print("\nPart 3 solution:\n")
+    print("\nPart 2 solution:\n")
     utilities.process_sampleset(sampleset, stockcodes)
