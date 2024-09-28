@@ -14,8 +14,10 @@
 
 # TODO: Import any required packages here
 
-
+from dimod import ConstrainedQuadraticModel, Binaries
 import utilities
+from operator import neg
+from dwave.system.samplers import LeapHybridCQMSampler
 
 
 def define_variables(stockcodes):
@@ -28,10 +30,8 @@ def define_variables(stockcodes):
             List of variables named 's_{stk}' for each stock stk in stockcodes, where stk is replaced by the stock code.
     """
 
-    # TODO: Define your list of variables and call it stocks
-    ## Hint: Remember to import the required package at the top of the file for Binary variables
+    return Binaries([f"s_{stock}" for stock in stockcodes])
 
-    return stocks
 
 def define_cqm(stocks, num_stocks_to_buy, returns):
     """Define a CQM for the exercise. 
@@ -53,29 +53,23 @@ def define_cqm(stocks, num_stocks_to_buy, returns):
         cqm (ConstrainedQuadraticModel)
     """
 
-    # TODO: Initialize the ConstrainedQuadraticModel called cqm
-    ## Hint: Remember to import the required package at the top of the file for ConstrainedQuadraticModels
-    
+    model = ConstrainedQuadraticModel()
 
-    # TODO: Add a constraint to choose exactly num_stocks_to_buy stocks
-    ## Important: Use the label 'choose k stocks', this label is case sensitive
+    model.add_constraint(sum(stocks) == 2, "choose k stocks")
+    model.set_objective(zip(stocks,
+                            map(neg, returns)))
 
 
     # TODO: Add an objective function maximize returns
     ## Hint: Use the information in returns, and remember to convert to minimization
 
+    return model
 
-    return cqm
 
 def sample_cqm(cqm):
 
-    # TODO: Define your sampler as LeapHybridCQMSampler
-    ## Hint: Remember to import the required package at the top of the file
-
-
-    # TODO: Sample the ConstrainedQuadraticModel cqm and store the result in sampleset
-
-
+    sampler = LeapHybridCQMSampler()
+    sampleset = sampler.sample_cqm(cqm)
     return sampleset
 
 
