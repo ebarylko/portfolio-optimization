@@ -18,6 +18,7 @@ from dimod import ConstrainedQuadraticModel, Binaries
 import utilities
 from operator import neg
 from dwave.system.samplers import LeapHybridCQMSampler
+from functools import reduce
 
 
 def define_variables(stockcodes):
@@ -55,13 +56,10 @@ def define_cqm(stocks, num_stocks_to_buy, returns):
 
     model = ConstrainedQuadraticModel()
 
-    model.add_constraint(sum(stocks) == 2, "choose k stocks")
-    model.set_objective(zip(stocks,
-                            map(neg, returns)))
+    to_buy = list(stocks)
+    model.add_constraint(sum(to_buy) == num_stocks_to_buy, "choose k stocks")
 
-
-    # TODO: Add an objective function maximize returns
-    ## Hint: Use the information in returns, and remember to convert to minimization
+    model.set_objective(sum(to_buy[i] * -returns[i] for i in range(num_stocks_to_buy)))
 
     return model
 
