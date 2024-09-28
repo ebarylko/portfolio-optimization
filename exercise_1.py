@@ -59,7 +59,7 @@ def define_cqm(stocks, num_stocks_to_buy, returns):
     to_buy = list(stocks)
     model.add_constraint(sum(to_buy) == num_stocks_to_buy, "choose k stocks")
 
-    model.set_objective(sum(to_buy[i] * -returns[i] for i in range(num_stocks_to_buy)))
+    model.set_objective(sum(to_buy[i] * -returns[i] for i in range(len(to_buy))))
 
     return model
 
