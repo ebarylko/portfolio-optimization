@@ -14,11 +14,9 @@
 
 # TODO: Import any required packages here
 
-from dimod import ConstrainedQuadraticModel, Binaries
+from dimod import ConstrainedQuadraticModel, Binaries, Binary
 import utilities
-from operator import neg
 from dwave.system.samplers import LeapHybridCQMSampler
-from functools import reduce
 
 
 def define_variables(stockcodes):
@@ -31,7 +29,7 @@ def define_variables(stockcodes):
             List of variables named 's_{stk}' for each stock stk in stockcodes, where stk is replaced by the stock code.
     """
 
-    return Binaries([f"s_{stock}" for stock in stockcodes])
+    return [Binary(f"s_{stock}") for stock in stockcodes]
 
 
 def define_cqm(stocks, num_stocks_to_buy, returns):
@@ -54,14 +52,14 @@ def define_cqm(stocks, num_stocks_to_buy, returns):
         cqm (ConstrainedQuadraticModel)
     """
 
-    model = ConstrainedQuadraticModel()
+    cqm = ConstrainedQuadraticModel()
 
     to_buy = list(stocks)
-    model.add_constraint(sum(to_buy) == num_stocks_to_buy, "choose k stocks")
+    cqm.add_constraint(sum(to_buy) == num_stocks_to_buy, "choose k stocks")
 
-    model.set_objective(sum(to_buy[i] * -returns[i] for i in range(len(to_buy))))
+    cqm.set_objective(sum(to_buy[i] * -returns[i] for i in range(len(to_buy))))
 
-    return model
+    return cqm
 
 
 def sample_cqm(cqm):
